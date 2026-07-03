@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>J.A.R.V.I.S</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-title">J·A·R·V·I·S</span>
+      <span class="brand-sub">Just A Rather Very Intelligent System</span>
+    </div>
+    <div class="status-cluster">
+      <span class="status-dot" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">ONLINE</span>
+      <button class="gear-btn" id="settingsBtn" title="Configuración de IA">⚙</button>
+    </div>
+  </header>
+
+  <div class="orb-stage" id="orbStage">
+    <div class="stats-card" id="statsCard">
+      <div class="stat-row">
+        <span class="stat-label">CPU</span>
+        <span class="stat-meter"><span class="stat-fill" id="cpuFill"></span></span>
+        <span class="stat-value" id="cpuValue">0%</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">RAM</span>
+        <span class="stat-meter"><span class="stat-fill ram" id="ramFill"></span></span>
+        <span class="stat-value" id="ramValue">0%</span>
+      </div>
+    </div>
+  </div>
+
+  <main class="chat" id="chat"></main>
+
+  <footer class="inputbar">
+    <button class="mic-btn" id="micBtn" title="Micrófono">⬤</button>
+
+    <label class="toggle">
+      <input type="checkbox" id="alwaysOnChk" />
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      <span class="toggle-label">Siempre escuchar</span>
+    </label>
+
+    <input type="text" id="textInput" class="text-input" autocomplete="off"
+           placeholder="Escribe o presiona ⬤ para hablar con JARVIS..." />
+
+    <button class="btn send-btn" id="sendBtn">ENVIAR</button>
+    <button class="btn clear-btn" id="clearBtn" title="Limpiar">✕</button>
+  </footer>
+
+  <div class="modal-overlay" id="confirmOverlay">
+    <div class="modal-card">
+      <div class="modal-icon">⚠</div>
+      <h3>JARVIS — Confirmar eliminación</h3>
+      <p>¿Eliminar definitivamente?</p>
+      <p class="modal-path" id="confirmPath"></p>
+      <p class="modal-warn">Esta acción no se puede deshacer.</p>
+      <div class="modal-actions">
+        <button class="btn modal-cancel" id="confirmNo">Cancelar</button>
+        <button class="btn modal-confirm" id="confirmYes">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="settingsOverlay">
+    <div class="modal-card">
+      <div class="modal-icon modal-icon-accent">⚙</div>
+      <h3 class="modal-title-accent">JARVIS — Configuración de IA</h3>
+
+      <label class="modal-field-label" for="providerSelect">Proveedor</label>
+      <select id="providerSelect" class="modal-select"></select>
+
+      <label class="modal-field-label" for="modelSelect">Modelo</label>
+      <select id="modelSelect" class="modal-select"></select>
+
+      <button class="btn modal-cancel modal-refresh" id="refreshModelsBtn">🔄 Actualizar modelos</button>
+      <p class="modal-warn" id="keyHint"></p>
+
+      <div class="modal-actions">
+        <button class="btn modal-cancel" id="settingsCancel">Cancelar</button>
+        <button class="btn modal-confirm" id="settingsSave">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="js/orb.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

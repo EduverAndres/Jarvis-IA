@@ -1,0 +1,6 @@
+.env
+data/*.json
+data/*.json.bak
+__pycache__/
+*.pyc
+.claude/
