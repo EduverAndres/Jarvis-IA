@@ -81,9 +81,13 @@ def bluetooth_connect(device: str) -> str:
     if not device or not device.strip():
         return "Especifica el nombre del dispositivo Bluetooth a conectar."
 
-    bluetooth_power("on")
-
+    # Camino rápido: normalmente el radio ya está encendido, así que evitamos
+    # el script WinRT (lento) y probamos listar dispositivos directamente.
+    # Solo si eso falla intentamos encenderlo y reintentamos una vez.
     devices = _list_paired_devices()
+    if not devices:
+        bluetooth_power("on")
+        devices = _list_paired_devices()
     if not devices:
         return ("No encontré dispositivos Bluetooth emparejados en este equipo. "
                 "Empareja el dispositivo manualmente desde Configuración > Bluetooth al menos una vez.")
@@ -98,7 +102,7 @@ def bluetooth_connect(device: str) -> str:
     instance_id = match["InstanceId"].replace("'", "''")
     script = (
         f"Disable-PnpDevice -InstanceId '{instance_id}' -Confirm:$false; "
-        f"Start-Sleep -Seconds 2; "
+        f"Start-Sleep -Milliseconds 800; "
         f"Enable-PnpDevice -InstanceId '{instance_id}' -Confirm:$false"
     )
     out, err, code = _run_ps(script, timeout=15)

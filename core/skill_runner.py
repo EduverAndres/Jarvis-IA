@@ -40,6 +40,16 @@ _REQUIRED: dict[str, list[str]] = {
     "bluetooth_on":          [],
     "bluetooth_off":         [],
     "bluetooth_connect":     ["device"],
+    # Spotify
+    "spotify_play":          [],
+    "spotify_pause":         [],
+    "spotify_next":          [],
+    "spotify_previous":      [],
+    "spotify_volume":        ["level"],
+    # Correo (Gmail)
+    "check_email":           [],
+    "send_email":            ["to", "subject", "body"],
+    "archive_email":         [],
 }
 
 
@@ -63,10 +73,12 @@ def _validate(skill: str, args: dict) -> str | None:
     return None
 
 
-def run_skills(response: str, confirm_fn: Callable[[str], bool] = None) -> list[tuple]:
+def run_skills(response: str, confirm_fn: Callable[[str], bool] = None,
+               confirm_email_fn: Callable[[str], bool] = None) -> list[tuple]:
     """
     Parse and execute every SKILL: directive in `response`.
     confirm_fn(path) must return True before any delete proceeds.
+    confirm_email_fn(summary) must return True before any email is sent.
     Returns list of (tag, skill_name, output_text).
     """
     from skills.file_skills import (
@@ -80,6 +92,10 @@ def run_skills(response: str, confirm_fn: Callable[[str], bool] = None) -> list[
     from skills.system_skills import execute_cmd, open_app, get_time, get_sysinfo
     from skills.web_skills import get_weather, web_search, get_wikipedia, get_news
     from skills.bluetooth_skills import bluetooth_power, bluetooth_connect
+    from skills.spotify_skills import (
+        spotify_play, spotify_pause, spotify_next, spotify_previous, spotify_volume,
+    )
+    from skills.email_skills import get_unread_summary, send_email, archive_email
 
     SKILLS = {
         "create_folder":         lambda a: create_folder(a["path"]),
@@ -109,6 +125,16 @@ def run_skills(response: str, confirm_fn: Callable[[str], bool] = None) -> list[
         "bluetooth_on":          lambda a: bluetooth_power("on"),
         "bluetooth_off":         lambda a: bluetooth_power("off"),
         "bluetooth_connect":     lambda a: bluetooth_connect(a["device"]),
+        # Spotify
+        "spotify_play":          lambda a: spotify_play(a.get("query", "")),
+        "spotify_pause":         lambda a: spotify_pause(),
+        "spotify_next":          lambda a: spotify_next(),
+        "spotify_previous":      lambda a: spotify_previous(),
+        "spotify_volume":        lambda a: spotify_volume(a["level"]),
+        # Correo (Gmail)
+        "check_email":           lambda a: get_unread_summary(),
+        "send_email":            lambda a: send_email(a["to"], a["subject"], a["body"], confirm_email_fn),
+        "archive_email":         lambda a: archive_email(a.get("which", "")),
     }
 
     results = []

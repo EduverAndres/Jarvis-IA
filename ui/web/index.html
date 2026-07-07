@@ -21,18 +21,18 @@
     </div>
   </header>
 
-  <div class="orb-stage" id="orbStage">
-    <div class="stats-card" id="statsCard">
-      <div class="stat-row">
-        <span class="stat-label">CPU</span>
-        <span class="stat-meter"><span class="stat-fill" id="cpuFill"></span></span>
-        <span class="stat-value" id="cpuValue">0%</span>
-      </div>
-      <div class="stat-row">
-        <span class="stat-label">RAM</span>
-        <span class="stat-meter"><span class="stat-fill ram" id="ramFill"></span></span>
-        <span class="stat-value" id="ramValue">0%</span>
-      </div>
+  <div class="orb-stage" id="orbStage"></div>
+
+  <div class="stats-card" id="statsCard">
+    <div class="stat-row">
+      <span class="stat-label">CPU</span>
+      <span class="stat-meter"><span class="stat-fill" id="cpuFill"></span></span>
+      <span class="stat-value" id="cpuValue">0%</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">RAM</span>
+      <span class="stat-meter"><span class="stat-fill ram" id="ramFill"></span></span>
+      <span class="stat-value" id="ramValue">0%</span>
     </div>
   </div>
 
@@ -57,13 +57,13 @@
   <div class="modal-overlay" id="confirmOverlay">
     <div class="modal-card">
       <div class="modal-icon">⚠</div>
-      <h3>JARVIS — Confirmar eliminación</h3>
-      <p>¿Eliminar definitivamente?</p>
+      <h3 id="confirmTitle">JARVIS — Confirmar eliminación</h3>
+      <p id="confirmMessage">¿Eliminar definitivamente?</p>
       <p class="modal-path" id="confirmPath"></p>
-      <p class="modal-warn">Esta acción no se puede deshacer.</p>
+      <p class="modal-warn" id="confirmWarn">Esta acción no se puede deshacer.</p>
       <div class="modal-actions">
         <button class="btn modal-cancel" id="confirmNo">Cancelar</button>
-        <button class="btn modal-confirm" id="confirmYes">Eliminar</button>
+        <button class="btn modal-confirm" id="confirmYes"><span id="confirmYesLabel">Eliminar</span></button>
       </div>
     </div>
   </div>
@@ -93,6 +93,10 @@
 
 <script src="vendor/three.min.js"></script>
 <script src="js/orb.js"></script>
+<!-- SDK oficial de Spotify — necesita internet, se carga desde su propio CDN
+     (no se vendoriza: tiene que hablar en vivo con la infraestructura de Spotify). -->
+<script src="https://sdk.scdn.co/spotify-player.js"></script>
+<script src="js/spotify.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

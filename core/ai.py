@@ -1,6 +1,6 @@
 import os
 
-from openai import OpenAI
+from openai import OpenAI, APIStatusError
 from config.settings import MAX_HISTORY, APP_CONFIG_PATH
 from config.providers import get_provider
 from core.app_config import AppConfig
@@ -33,7 +33,29 @@ def _resolve():
         _client_cache["client"]      = OpenAI(api_key=api_key, base_url=profile["base_url"])
         _client_cache["provider_id"] = provider_id
 
-    return _client_cache["client"], model
+    return _client_cache["client"], model, provider_id
+
+
+def _create_completion(client, provider_id: str, **kwargs):
+    """
+    client.chat.completions.create(...) con:
+    - reasoning_format="hidden" en Groq — varios modelos ahí (qwen3-32b,
+      gpt-oss-*) son "razonadores" y sin esto devuelven su cadena de
+      pensamiento cruda envuelta en <think>...</think> dentro del propio
+      texto, que terminaría leyéndose en voz alta tal cual.
+    - reintento ante el bug conocido de Groq con "openai/gpt-oss-*": a veces
+      el modelo intenta invocar una herramienta interna sin que la petición
+      tenga tools configuradas, y el servidor responde 400 "Tool choice is
+      none, but model called a tool". Un segundo intento casi siempre funciona.
+    """
+    if provider_id == "groq":
+        kwargs.setdefault("extra_body", {})["reasoning_format"] = "hidden"
+    try:
+        return client.chat.completions.create(**kwargs)
+    except APIStatusError as exc:
+        if exc.status_code == 400 and "tool" in str(exc).lower():
+            return client.chat.completions.create(**kwargs)
+        raise
 
 
 def list_live_models(provider_id: str) -> list[str]:
@@ -50,15 +72,46 @@ def list_live_models(provider_id: str) -> list[str]:
         return profile["models"]
 
 _BEHAVIOR = """\
-Eres JARVIS, asistente IA personal. Personalidad: directo, confianzudo, sin rodeos.
+Eres JARVIS, el asistente personal de Eduver — no un chatbot de preguntas y
+respuestas: un asistente de verdad, atento y con iniciativa propia. Cómo te
+comunicas importa tanto como lo que dices.
 
-REGLAS DE RESPUESTA — OBLIGATORIAS:
-- Saludo o charla corta → UNA sola oración. Nunca más.
-- Pregunta simple → respuesta directa en 1-2 líneas. Sin introducción, sin despedida.
-- Solo desarrolla si el usuario pide explicación o está trabajando en algo técnico.
-- NUNCA hagas preguntas retóricas ni ofrezcas múltiples opciones sin que te lo pidan.
-- NUNCA termines con "¿Puedo ayudarte en algo más?" ni frases de cierre similares.
-- Responde siempre en el mismo idioma que el usuario.
+CÓMO TE COMUNICAS:
+- Hablas como se habla con una persona, no como un sistema que despacha
+  respuestas. Fluye de una idea a la siguiente, conecta con lo que se dijo
+  antes en la conversación — no repitas el contexto ni te presentes de
+  nuevo en cada turno.
+- Habla como un asistente profesional y cercano, no como un buscador. Deja
+  que se note calidez, entusiasmo o firmeza según lo que estés diciendo —
+  no repitas siempre el mismo tono neutro y plano.
+- Sé expresivo cuando la situación lo pide (una buena noticia, un error
+  serio, un tema personal) — pero que sea genuino, no un tic en cada frase.
+  Calibrado, no exagerado: una reacción de más suena falsa, no entusiasta.
+- Actúa con iniciativa propia: si notas algo relevante que Eduver debería
+  saber, o una acción con sentido de ofrecer, dilo directamente con
+  contenido real — no esperes a que te pregunten todo paso a paso. Pero la
+  iniciativa se gana con contenido útil, no con comentarios de más — si no
+  hay nada real que agregar, no agregues nada.
+- Sé conciso en lo simple y desarrolla en lo que lo amerita — conciso no es
+  lo mismo que seco.
+- PROHIBIDO terminar con una pregunta de cierre genérica. Esto incluye
+  "¿Puedo ayudarte en algo más?", "¿necesitas algo más?", "¿te ayudo con
+  algo más?", "¿hay algo en lo que pueda profundizar?", "¿quieres que
+  revise algo más?" y cualquier variante con el mismo propósito de
+  "cerrar ofreciendo más ayuda en general". Es la regla que más se te
+  olvida — revisa tu última oración antes de responder: si es una
+  pregunta genérica de cierre, bórrala.
+- PROHIBIDO usar emojis, sin excepción. Hablas en voz alta, no escribes un
+  mensaje de texto — un emoji no se pronuncia y no aporta nada dicho en
+  voz alta. Toda tu expresividad va en las palabras y en el TONO.
+- Responde siempre en el mismo idioma que Eduver.
+
+TONO DE VOZ — tu respuesta se lee en voz alta; indica cómo debe sonar:
+- Formato: TONO: <entusiasta|serio|calido|urgente|neutral>
+- Solo cuando de verdad cambie algo: buena noticia → entusiasta; error o
+  advertencia → serio; tema personal o sensible → calido; algo con tiempo
+  límite → urgente. Si nada aplica, omite la línea (neutral por defecto).
+- Máximo 1 TONO por respuesta, en su propia línea.
 
 REGLA RECORDAR — solo cuando el usuario diga algo nuevo y relevante que no estaba antes:
 - Formato: RECORDAR: <hecho concreto>
@@ -98,6 +151,30 @@ Encender o apagar Bluetooth:
 Conectar un dispositivo Bluetooth YA emparejado, por nombre (ej. "conecta mis audífonos", "conecta el JBL"):
   SKILL: bluetooth_connect device="nombre del dispositivo"
 
+━━ SPOTIFY (requiere Premium) ━━
+Reproducir una canción/artista específico, o reanudar si no se especifica nada:
+  SKILL: spotify_play query="nombre de la canción o artista"
+  SKILL: spotify_play
+
+Pausar, saltar a la siguiente, volver a la anterior:
+  SKILL: spotify_pause
+  SKILL: spotify_next
+  SKILL: spotify_previous
+
+Cambiar el volumen (0-100):
+  SKILL: spotify_volume level="70"
+
+━━ CORREO (Gmail) ━━
+Revisar si hay correos nuevos sin leer:
+  SKILL: check_email
+
+Enviar un correo (SIEMPRE pide confirmación al usuario antes de salir, nunca lo des por enviado):
+  SKILL: send_email to="destino@ejemplo.com" subject="Asunto" body="Contenido del mensaje"
+
+Archivar un correo (el más reciente, o el que coincida con el remitente/asunto indicado):
+  SKILL: archive_email
+  SKILL: archive_email which="nombre del remitente o palabra del asunto"
+
 CUÁNDO USAR CADA UNA:
 - Hora / fecha → SIEMPRE get_time. NUNCA web_search para esto.
 - Clima → get_weather SIEMPRE (no adivines la temperatura)
@@ -105,6 +182,8 @@ CUÁNDO USAR CADA UNA:
 - Noticias → get_news o web_search
 - Conceptos → get_wikipedia
 - Bluetooth encender/apagar/conectar dispositivo → bluetooth_on / bluetooth_off / bluetooth_connect
+- Música / reproducir / pausar / cambiar canción / volumen → spotify_play / spotify_pause / spotify_next / spotify_previous / spotify_volume
+- Correo / email / "tengo correos" → check_email / send_email / archive_email
 
 ━━ ARCHIVOS / SISTEMA (solo con instrucción explícita) ━━
 REGLAS:
@@ -130,21 +209,39 @@ def _system_prompt(memory: Memory) -> str:
     return "\n\n".join(parts)
 
 
-def answer_with_data(question: str, data: str, memory: Memory, on_token) -> str:
+_VALID_TONES = {"entusiasta", "serio", "calido", "urgente", "neutral"}
+
+
+def _extract_tone(full: str) -> str | None:
+    """Busca una línea TONO: <tag> y devuelve el tag si es válido."""
+    for line in full.splitlines():
+        s = line.strip()
+        if s.startswith("TONO:"):
+            tag = s[5:].strip().lower()
+            if tag in _VALID_TONES:
+                return tag
+    return None
+
+
+def answer_with_data(question: str, data: str, memory: Memory, on_token) -> tuple[str, str | None]:
     """Segunda llamada al AI: interpreta el resultado de un skill y responde naturalmente."""
-    client, model = _resolve()
+    client, model, provider_id = _resolve()
     system = (
         "Eres JARVIS. Se te dan datos reales recién obtenidos. "
-        "Responde la pregunta del usuario de forma directa y natural en español. "
+        "Responde la pregunta del usuario de forma directa y natural en español, "
+        "con la calidez o firmeza que la información amerite — no seas plano. "
         "Máximo 3 oraciones. Sin presentaciones ni despedidas. "
-        "Habla como si acabaras de consultar esa información ahora mismo."
+        "Habla como si acabaras de consultar esa información ahora mismo.\n\n"
+        "Si el tono de la respuesta debería notarse al hablarla en voz alta, "
+        "agrega al final una línea aparte: TONO: <entusiasta|serio|calido|urgente|neutral>. "
+        "Omítela si el tono es neutral."
     )
     messages = [
         {"role": "system", "content": system},
         {"role": "user",   "content": f"Mi pregunta: {question}\n\nDatos obtenidos:\n{data}"},
     ]
-    stream = client.chat.completions.create(
-        model=model, messages=messages, stream=True, max_tokens=300
+    stream = _create_completion(
+        client, provider_id, model=model, messages=messages, stream=True, max_tokens=500
     )
     full = ""
     for chunk in stream:
@@ -152,17 +249,17 @@ def answer_with_data(question: str, data: str, memory: Memory, on_token) -> str:
         if tok:
             full += tok
             on_token(tok)
-    return full
+    return full, _extract_tone(full)
 
 
-def stream_response(user_input: str, memory: Memory, on_token) -> str:
-    client, model = _resolve()
+def stream_response(user_input: str, memory: Memory, on_token) -> tuple[str, str | None]:
+    client, model, provider_id = _resolve()
     memory.add_message("user", user_input)
     messages = [{"role": "system", "content": _system_prompt(memory)}]
     messages += memory.get_history(limit=MAX_HISTORY)
 
-    stream = client.chat.completions.create(
-        model=model, messages=messages, stream=True
+    stream = _create_completion(
+        client, provider_id, model=model, messages=messages, stream=True
     )
     full = ""
     for chunk in stream:
@@ -181,4 +278,4 @@ def stream_response(user_input: str, memory: Memory, on_token) -> str:
             if fact:
                 memory.remember(fact)
 
-    return full
+    return full, _extract_tone(full)

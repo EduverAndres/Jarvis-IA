@@ -10,7 +10,11 @@
   const sendBtn       = document.getElementById("sendBtn");
   const clearBtn      = document.getElementById("clearBtn");
   const confirmOverlay = document.getElementById("confirmOverlay");
+  const confirmTitle   = document.getElementById("confirmTitle");
+  const confirmMessage = document.getElementById("confirmMessage");
   const confirmPath   = document.getElementById("confirmPath");
+  const confirmWarn   = document.getElementById("confirmWarn");
+  const confirmYesLabel = document.getElementById("confirmYesLabel");
   const confirmYes    = document.getElementById("confirmYes");
   const confirmNo     = document.getElementById("confirmNo");
 
@@ -29,10 +33,10 @@
   const ramValue = document.getElementById("ramValue");
 
   const STATE_META = {
-    idle:      { label: "ONLINE",     color: "#00ff88" },
-    thinking:  { label: "PENSANDO",   color: "#00d4ff" },
-    listening: { label: "ESCUCHANDO", color: "#00ff99" },
-    speaking:  { label: "HABLANDO",   color: "#7777ff" },
+    idle:      { label: "ONLINE",     color: "#8b0000" },
+    thinking:  { label: "PENSANDO",   color: "#ff3245" },
+    listening: { label: "ESCUCHANDO", color: "#ff6b78" },
+    speaking:  { label: "HABLANDO",   color: "#d90429" },
   };
 
   let currentStreamBody = null;
@@ -95,6 +99,10 @@
     if (window.JarvisOrb) window.JarvisOrb.setLevel(level);
   };
 
+  window.jarvisSetMusicStyle = function (active, colorHex, tempo, energy, positionMs) {
+    if (window.JarvisOrb) window.JarvisOrb.setMusicStyle(active, colorHex, tempo, energy, positionMs);
+  };
+
   window.jarvisSetState = function (state) {
     const meta = STATE_META[state] || STATE_META.idle;
     statusLabel.textContent = meta.label;
@@ -105,8 +113,12 @@
     if (window.JarvisOrb) window.JarvisOrb.setState(state);
   };
 
-  window.jarvisShowConfirm = function (path) {
-    confirmPath.textContent = path;
+  window.jarvisShowConfirm = function (title, message, detail, warn, confirmLabel) {
+    confirmTitle.textContent     = title;
+    confirmMessage.textContent   = message;
+    confirmPath.textContent      = detail;
+    confirmWarn.textContent      = warn;
+    confirmYesLabel.textContent  = confirmLabel || "Confirmar";
     confirmOverlay.classList.add("show");
   };
 

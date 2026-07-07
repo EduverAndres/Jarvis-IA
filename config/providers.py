@@ -16,12 +16,17 @@ PROVIDERS = {
         "label": "Groq",
         "base_url": "https://api.groq.com/openai/v1",
         "api_key_env": "GROQ_API_KEY",
-        "default_model": "openai/gpt-oss-20b",
+        # Nota: los modelos "openai/gpt-oss-*" tienen un bug documentado en
+        # Groq — a veces intentan invocar una herramienta interna aunque la
+        # petición no tiene tools configuradas, y el servidor responde
+        # "Tool choice is none, but model called a tool" (400). Por eso NO
+        # son el default, aunque siguen disponibles en la lista.
+        "default_model": "qwen/qwen3-32b",
         "models": [
-            "openai/gpt-oss-20b",
-            "openai/gpt-oss-120b",
             "qwen/qwen3-32b",
             "moonshotai/kimi-k2-instruct",
+            "openai/gpt-oss-20b",
+            "openai/gpt-oss-120b",
         ],
     },
     "cerebras": {
@@ -59,6 +64,23 @@ PROVIDERS = {
             "mistral-small-latest",
             "mistral-large-latest",
             "open-mistral-nemo-2407",
+        ],
+    },
+    "gemini": {
+        "id": "gemini",
+        "label": "Google Gemini",
+        # Endpoint compatible con OpenAI que expone Google — mismo cliente
+        # openai.OpenAI(...) que los demás proveedores, sin SDK aparte.
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "api_key_env": "GEMINI_API_KEY",
+        # "gemini-flash-latest" es un alias que Google mantiene apuntando al
+        # último modelo "flash" estable — no hay que perseguir versiones a mano.
+        "default_model": "gemini-flash-latest",
+        "models": [
+            "gemini-flash-latest",
+            "gemini-2.5-flash",
+            "gemini-3.5-flash",
+            "gemini-2.0-flash",
         ],
     },
 }
